@@ -25,3 +25,22 @@ class EventCreate(EventBase):
 class EventRead(EventBase):
     id: int
     available_tickets: int
+
+class User(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    email: str = Field(index=True, unique=True)
+    hashed_password: str
+    is_active: bool = True
+    role: str = "user" # 'user' or 'admin'
+
+# Pydantic Schema for User Input (Signup)
+class UserCreate(SQLModel):
+    email: str
+    password: str
+
+# Pydantic Schema for Returning User Data (Output)
+# NEVER return the password!
+class UserRead(SQLModel):
+    id: int
+    email: str
+    role: str    

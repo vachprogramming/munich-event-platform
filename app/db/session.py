@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, create_engine, Session
 from app.core.config import settings
-from app.models import Event 
+from app.models import Event, User
 
 # 1. Creating the engine
 engine = create_engine(settings.DATABASE_URL, connect_args={"check_same_thread": False})
