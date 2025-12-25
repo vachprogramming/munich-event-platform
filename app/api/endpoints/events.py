@@ -3,26 +3,28 @@ from sqlmodel import Session, select
 from typing import List
 
 from app.db.session import get_session
-from app.models import Event, EventCreate, EventRead
+from app.models import Event, EventCreate, EventRead, User
+from app.api.deps import get_current_user
 
 router = APIRouter()
 
 @router.post("/events/", response_model=EventRead)
-def create_event(event: EventCreate, session: Session = Depends(get_session)):
+def create_event(
+    event: EventCreate, 
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user) # <--- The Bouncer!
+):
     """
-    Create a new event. 
-    Initial available_tickets will equal total_tickets.
+    Create a new event. Requires authentication.
     """
-    # 1. Convert the "Create" model to the "Table" model
-    db_event = Event.model_validate(event)
+    db_event = Event.model_validate(event, update={"available_tickets": event.total_tickets})
     
-    # 2. Set logic: initially, all tickets are available
-    db_event.available_tickets = event.total_tickets
+    # Optional: We could save who created the event!
+    # db_event.owner_id = current_user.id 
     
-    # 3. Add to DB and save
     session.add(db_event)
     session.commit()
-    session.refresh(db_event) # Refresh to get the generated ID
+    session.refresh(db_event)
     return db_event
 
 @router.get("/events/", response_model=List[EventRead])
