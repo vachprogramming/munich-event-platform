@@ -44,3 +44,22 @@ class UserRead(SQLModel):
     id: int
     email: str
     role: str    
+
+
+# The Booking Table
+class Booking(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    event_id: int = Field(foreign_key="event.id")
+    status: str = "confirmed" # or "pending", "cancelled"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+# API Input
+class BookingCreate(SQLModel):
+    event_id: int
+
+# API Output
+class BookingRead(SQLModel):
+    id: int
+    event_id: int
+    status: str    

@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, create_engine, Session
 from app.core.config import settings
-from app.models import Event, User
+from app.models import Event, User, Booking
 
 # 1. Creating the engine
 # check_same_thread is only needed for SQLite
