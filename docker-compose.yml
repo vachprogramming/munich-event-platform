@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # Service 1: The Database
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=munich_secret_password
+      - POSTGRES_DB=munich_events
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # Persist data if container restarts
+    ports:
+      - "5432:5432"
+
+  # Service 2: Redis (The Cache/Lock)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  # Service 3: Your FastAPI App
+  web:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app  # Live reload! If you change code on Windows, it updates in Docker.
+    ports:
+      - "8000:8000"
+    environment:
+      # CRITICAL: We override the settings here.
+      # Notice the host is 'db', NOT 'localhost'. 
+      # Inside Docker, services talk to each other by name.
+      - DATABASE_URL=postgresql://postgres:munich_secret_password@db:5432/munich_events
+      - SECRET_KEY=super-secret-key-for-dev
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  postgres_data:
