@@ -37,6 +37,13 @@ services:
     depends_on:
       - db
       - redis
+      - payment-service
+
+  # Service 4: The Java Payment Microservice
+  payment-service:
+    build: ./payment-service
+    ports:
+      - "8080:8080"
 
 volumes:
   postgres_data:
