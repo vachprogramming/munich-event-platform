@@ -4,7 +4,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 
 from app.db.session import get_session
-from app.models import User, UserCreate, UserRead
+from app.models import User, UserCreate, UserRead, Event, Booking
+from app.api.deps import get_current_user
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.core.config import settings
 
@@ -57,3 +58,54 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), ses
     )
     
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/me")
+def get_my_profile(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get current user's profile with their created events and bookings.
+    """
+    # Get events created by this user
+    my_events = session.exec(
+        select(Event).where(Event.owner_id == current_user.id)
+    ).all()
+    
+    # Get bookings made by this user
+    my_bookings = session.exec(
+        select(Booking).where(Booking.user_id == current_user.id)
+    ).all()
+    
+    # Get event details for each booking
+    booked_events = []
+    for booking in my_bookings:
+        event = session.get(Event, booking.event_id)
+        if event:
+            booked_events.append({
+                "booking_id": booking.id,
+                "event_id": event.id,
+                "title": event.title,
+                "date": event.date.isoformat(),
+                "location": event.location,
+                "status": booking.status
+            })
+    
+    return {
+        "user": {
+            "id": current_user.id,
+            "email": current_user.email,
+            "role": current_user.role
+        },
+        "created_events": [
+            {
+                "id": e.id,
+                "title": e.title,
+                "date": e.date.isoformat(),
+                "location": e.location,
+                "available_tickets": e.available_tickets,
+                "total_tickets": e.total_tickets
+            } for e in my_events
+        ],
+        "booked_events": booked_events
+    }

@@ -1,5 +1,27 @@
-from typing import Optional
-from app.api.deps import get_current_user_optional 
+from typing import Optional, List
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+
+from app.db.session import get_session
+from app.models import Booking, BookingCreate, BookingRead, User, Event
+from app.api.deps import get_current_user_optional, get_current_user
+from app.core.redis_utils import acquire_lock
+
+router = APIRouter()
+
+
+@router.get("/bookings/me", response_model=List[BookingRead])
+def get_my_bookings(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get all bookings for the currently authenticated user.
+    """
+    bookings = session.exec(
+        select(Booking).where(Booking.user_id == current_user.id)
+    ).all()
+    return bookings
 
 @router.post("/bookings/", response_model=BookingRead)
 def create_booking(

@@ -1,107 +1,179 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import api from '@/utils/api';
 import { Event } from '@/types';
+import BookingModal from '@/components/BookingModal';
 
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
-  // 1. Fetch events when the page loads
   useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const response = await api.get('/events/');
-        setEvents(response.data);
-      } catch (error) {
-        console.error("Error fetching events:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchEvents();
   }, []);
 
-  // 2. Handle Booking Logic
-  const handleBook = async (eventId: number) => {
+  const fetchEvents = async () => {
     try {
-      if (!confirm("Confirm booking for this event?")) return;
-
-      await api.post('/bookings/', { event_id: eventId });
-      
-      alert("✅ Booking Successful! Check your email.");
-      
-      // Refresh the page to update "available tickets" count
-      window.location.reload();
-      
-    } catch (error: any) {
-      // Show the specific error from the backend (e.g., "Sold Out")
-      const message = error.response?.data?.detail || "Booking failed";
-      alert(`❌ Error: ${message}`);
+      const response = await api.get('/events/');
+      setEvents(response.data);
+    } catch (error) {
+      console.error("Error fetching events");
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) return <div className="p-10 text-center text-black">Loading events...</div>;
+  const openBookingModal = (event: Event) => {
+    setSelectedEvent(event);
+    setIsModalOpen(true);
+  };
+
+  const handleBookingConfirm = async (guestData?: { name: string; email: string }) => {
+    if (!selectedEvent) return;
+
+    try {
+      const payload: any = { event_id: selectedEvent.id };
+      
+      if (guestData) {
+        payload.guest_name = guestData.name;
+        payload.guest_email = guestData.email;
+      }
+
+      await api.post('/bookings/', payload);
+      
+      alert("✅ Booking Successful! Check your email.");
+      setIsModalOpen(false);
+      fetchEvents();
+      
+    } catch (error: any) {
+      alert(`❌ Error: ${error.response?.data?.detail || "Booking failed"}`);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-600 font-medium">Loading events...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Upcoming Events 📅</h1>
-          <button 
-            onClick={() => {
-              localStorage.removeItem('token');
-              router.push('/login');
-            }}
-            className="text-red-600 hover:text-red-800 text-sm font-semibold"
-          >
-            Logout
-          </button>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="max-w-6xl mx-auto px-4 py-6 sm:py-10">
+        {/* Header Section */}
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
+            Upcoming Events 📅
+          </h1>
+          <p className="text-gray-500 text-sm sm:text-base">
+            Discover amazing events happening in Munich
+          </p>
         </div>
 
-        {/* Grid Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {events.map((event) => (
-            <div key={event.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition">
-              <div className="p-6">
-                <div className="flex justify-between items-start">
-                  <h2 className="text-xl font-bold text-gray-900 mb-2">{event.title}</h2>
-                  <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
-                    {event.price === 0 ? 'FREE' : `€${event.price}`}
-                  </span>
-                </div>
+        {events.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="text-6xl mb-4">🎪</div>
+            <h2 className="text-xl font-semibold text-gray-700 mb-2">No events yet</h2>
+            <p className="text-gray-500">Be the first to create an event!</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {events.map((event) => (
+              <div 
+                key={event.id} 
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              >
+                {/* Card Header with gradient */}
+                <div className="h-2 bg-gradient-to-r from-blue-500 to-purple-500"></div>
                 
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                  {event.description}
-                </p>
-                
-                <div className="space-y-2 text-sm text-gray-500 mb-6">
-                  <p>📍 {event.location}</p>
-                  <p>⏰ {new Date(event.date).toLocaleDateString()} at {new Date(event.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                  <p className={event.available_tickets < 5 ? "text-red-600 font-bold" : "text-green-600"}>
-                    🎫 {event.available_tickets} tickets left
+                <div className="p-5 sm:p-6">
+                  {/* Title & Price */}
+                  <div className="flex justify-between items-start gap-3 mb-3">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 line-clamp-2 flex-1">
+                      {event.title}
+                    </h2>
+                    <span className={`shrink-0 text-xs font-bold px-2.5 py-1 rounded-full ${
+                      event.price === 0 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {event.price === 0 ? 'FREE' : `€${event.price}`}
+                    </span>
+                  </div>
+                  
+                  {/* Description */}
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                    {event.description}
                   </p>
-                </div>
+                  
+                  {/* Event Details */}
+                  <div className="space-y-2 text-sm mb-5">
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <span>📍</span>
+                      <span className="truncate">{event.location}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <span>⏰</span>
+                      <span>
+                        {new Date(event.date).toLocaleDateString('en-DE', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                    <div className={`flex items-center gap-2 font-medium ${
+                      event.available_tickets < 5 
+                        ? 'text-red-600' 
+                        : event.available_tickets < 20 
+                          ? 'text-orange-500' 
+                          : 'text-green-600'
+                    }`}>
+                      <span>🎫</span>
+                      <span>
+                        {event.available_tickets === 0 
+                          ? 'Sold Out!' 
+                          : `${event.available_tickets} tickets left`}
+                      </span>
+                    </div>
+                  </div>
 
-                <button
-                  onClick={() => handleBook(event.id)}
-                  disabled={event.available_tickets === 0}
-                  className={`w-full py-2 px-4 rounded-lg font-medium transition ${
-                    event.available_tickets === 0
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
-                >
-                  {event.available_tickets === 0 ? 'Sold Out' : 'Book Ticket'}
-                </button>
+                  {/* Book Button */}
+                  <button
+                    onClick={() => openBookingModal(event)}
+                    disabled={event.available_tickets === 0}
+                    className={`w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all ${
+                      event.available_tickets === 0
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg hover:shadow-blue-500/25 active:scale-[0.98]'
+                    }`}
+                  >
+                    {event.available_tickets === 0 ? 'Sold Out' : 'Book Ticket'}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+
+        {/* Booking Modal */}
+        {selectedEvent && (
+          <BookingModal 
+            isOpen={isModalOpen} 
+            closeModal={() => setIsModalOpen(false)} 
+            onConfirm={handleBookingConfirm}
+            eventTitle={selectedEvent.title}
+          />
+        )}
       </div>
     </div>
   );
