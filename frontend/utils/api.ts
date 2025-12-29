@@ -2,10 +2,9 @@ import axios from 'axios';
 
 // Create a configured instance of axios
 const api = axios.create({
-  baseURL: 'http://localhost:8000', // Our FastAPI backend
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  // Use environment variable if available, otherwise localhost
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+  headers: { 'Content-Type': 'application/json' },
 });
 
 // Automatically add the JWT token to every request if we have it
