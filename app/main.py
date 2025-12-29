@@ -15,7 +15,7 @@ app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 # CORS - Allow frontend to call backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://munich-event-platform.vercel.app"],  # Next.js frontend
+    allow_origins=["*"],  # Next.js frontend
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
