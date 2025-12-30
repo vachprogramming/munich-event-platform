@@ -67,4 +67,32 @@ def create_booking(
              raise HTTPException(status_code=400, detail="Sold out!")
 
         # LOGIC: Guest vs User
-        user
+        user_id = None
+        guest_email = None
+        guest_name = None
+
+        if current_user:
+            # Case 1: Logged In
+            user_id = current_user.id
+        else:
+            # Case 2: Guest
+            if not booking_in.guest_email or not booking_in.guest_name:
+                raise HTTPException(status_code=400, detail="Guest name and email required")
+            guest_email = booking_in.guest_email
+            guest_name = booking_in.guest_name
+
+        # Save booking
+        event.available_tickets -= 1
+        session.add(event)
+        
+        new_booking = Booking(
+            user_id=user_id,
+            guest_email=guest_email,
+            guest_name=guest_name,
+            event_id=event.id,
+            status="confirmed"
+        )
+        session.add(new_booking)
+        session.commit()
+        session.refresh(new_booking)
+        return new_booking
